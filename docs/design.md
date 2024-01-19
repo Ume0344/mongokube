@@ -12,7 +12,7 @@ To create a separate namespace for mongokube, run;
 kubectl create namespace mongokube-ns
 ```
 
-To create the CRD for monogkube, run;
+To create the CRD for mongokube, run;
 ```
 kubectl create -f home/$(whoami)/mongokube-deployer/manifests/mongokube-crd.yaml 
 ```

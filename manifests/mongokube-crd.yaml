@@ -6,7 +6,7 @@ spec:
   group: mongokube.wrd
   scope: Namespaced
   versions:
-    - name: v1alpha1
+    - name: beta1
       served: true
       storage: true
       schema:
