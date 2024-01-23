@@ -1,12 +1,17 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"mongokube/pkg/apis/mongokube/beta1"
 	mkclientset "mongokube/pkg/client/clientset/versioned"
 	mkinformers "mongokube/pkg/client/informers/externalversions/mongokube/beta1"
 	mklister "mongokube/pkg/client/listers/mongokube/beta1"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -126,5 +131,41 @@ func (c *Controller) processNextItem() bool {
 	// %+v for printing struct
 	fmt.Printf("Mk resource specs are :%+v\n", mkResource.Spec)
 
+	// Handle Mk resource
+	deployment := c.handleMkResource(mkResource)
+
+	if deployment {
+		c.mkWorkQueue.Forget(item)
+	}
+
 	return true
+}
+
+// Handle mk resource whenever it is created and added to queue
+func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
+	err := c.createSecret(mkResource)
+	if err != nil {
+		fmt.Printf("Failed to create secret: %s\n", err.Error())
+	}
+
+	return true
+}
+
+// Create a secret for mongodb
+func (c *Controller) createSecret(mkResource *beta1.Mk) error {
+	secretData := map[string][]byte{
+		"username": []byte(mkResource.Spec.DbUsername),
+		"password": []byte(mkResource.Spec.DbPassword),
+	}
+
+	secret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mongodb-secret",
+			Namespace: mkResource.Namespace,
+		},
+		Data: secretData,
+	}
+	_, err := c.k8sclient.CoreV1().Secrets(mkResource.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
+
+	return err
 }
