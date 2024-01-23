@@ -1,0 +1,10 @@
+apiVersion: "mongokube.wrd/beta1"
+kind: Mk
+metadata:
+  name: mongokube-test
+  namespace: mongokube-ns
+spec:
+ mongoExpressImage: ""
+ mongoDbImage: ""
+ dbUsername: "admin"
+ dbPassword: "admin"
