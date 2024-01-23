@@ -5,6 +5,6 @@ metadata:
   namespace: mongokube-ns
 spec:
  mongoExpressImage: ""
- mongoDbImage: ""
+ mongoDbImage: "mongo:4.4.6"
  dbUsername: "admin"
  dbPassword: "admin"

@@ -10,6 +10,7 @@ import (
 	mkinformers "mongokube/pkg/client/informers/externalversions/mongokube/beta1"
 	mklister "mongokube/pkg/client/listers/mongokube/beta1"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -143,16 +144,25 @@ func (c *Controller) processNextItem() bool {
 
 // Handle mk resource whenever it is created and added to queue
 func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
-	err := c.createSecret(mkResource)
+	fmt.Printf("Creating a secret for mk resource: %s\n", mkResource.Name)
+	secret, err := c.createSecret(mkResource)
 	if err != nil {
 		fmt.Printf("Failed to create secret: %s\n", err.Error())
 	}
+
+	fmt.Printf("Creating a deployment for mk resource: %s\n", mkResource.Name)
+	deployment, err := c.createMongoDeployment(mkResource, secret)
+	if err != nil {
+		fmt.Printf("Failed to create deployment: %s\n", err.Error())
+	}
+
+	fmt.Printf("deployment: %s\n", deployment.Name)
 
 	return true
 }
 
 // Create a secret for mongodb
-func (c *Controller) createSecret(mkResource *beta1.Mk) error {
+func (c *Controller) createSecret(mkResource *beta1.Mk) (*v1.Secret, error) {
 	secretData := map[string][]byte{
 		"username": []byte(mkResource.Spec.DbUsername),
 		"password": []byte(mkResource.Spec.DbPassword),
@@ -165,7 +175,73 @@ func (c *Controller) createSecret(mkResource *beta1.Mk) error {
 		},
 		Data: secretData,
 	}
-	_, err := c.k8sclient.CoreV1().Secrets(mkResource.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	createdSecret, err := c.k8sclient.CoreV1().Secrets(mkResource.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
 
-	return err
+	return createdSecret, err
+}
+
+func (c *Controller) createMongoDeployment(mkResource *beta1.Mk, secret *v1.Secret) (*appsv1.Deployment, error) {
+	// container data
+	// label to connect with service
+	replica := int32(2)
+	var containerPort int32 = 27017
+
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mkResource.Name + "-deployment",
+			Namespace: mkResource.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replica,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": mkResource.Name + "db"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": mkResource.Name + "db"},
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  mkResource.Name + "-container",
+							Image: mkResource.Spec.MongoDbImage,
+							Ports: []v1.ContainerPort{
+								{
+									ContainerPort: containerPort,
+								},
+							},
+							Env: []v1.EnvVar{
+								{
+									Name: "MONGO_INITDB_ROOT_USERNAME",
+									ValueFrom: &v1.EnvVarSource{
+										SecretKeyRef: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: secret.Name,
+											},
+											Key: string(secret.Data["username"]),
+										},
+									},
+								},
+								{
+									Name: "MONGO_INITDB_ROOT_PASSWORD",
+									ValueFrom: &v1.EnvVarSource{
+										SecretKeyRef: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: secret.Name,
+											},
+											Key: string(secret.Data["password"]),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	deploymentResponse, err := c.k8sclient.AppsV1().Deployments(mkResource.Namespace).Create(context.Background(), deployment, metav1.CreateOptions{})
+
+	return deploymentResponse, err
 }
