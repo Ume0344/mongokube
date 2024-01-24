@@ -218,7 +218,7 @@ func (c *Controller) createMongoDeployment(mkResource *beta1.Mk, secret *v1.Secr
 											LocalObjectReference: v1.LocalObjectReference{
 												Name: secret.Name,
 											},
-											Key: string(secret.Data["username"]),
+											Key: c.getKey("username", secret),
 										},
 									},
 								},
@@ -229,7 +229,7 @@ func (c *Controller) createMongoDeployment(mkResource *beta1.Mk, secret *v1.Secr
 											LocalObjectReference: v1.LocalObjectReference{
 												Name: secret.Name,
 											},
-											Key: string(secret.Data["password"]),
+											Key: c.getKey("password", secret),
 										},
 									},
 								},
@@ -244,4 +244,18 @@ func (c *Controller) createMongoDeployment(mkResource *beta1.Mk, secret *v1.Secr
 	deploymentResponse, err := c.k8sclient.AppsV1().Deployments(mkResource.Namespace).Create(context.Background(), deployment, metav1.CreateOptions{})
 
 	return deploymentResponse, err
+}
+
+// Get the desired key from secret
+func (c *Controller) getKey(key string, secret *v1.Secret) string {
+	var desiredKey string
+
+	for k := range secret.Data {
+		if k == key {
+			desiredKey = k
+		}
+	}
+
+	fmt.Printf("Key : %s\n", desiredKey)
+	return desiredKey
 }

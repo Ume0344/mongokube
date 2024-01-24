@@ -45,6 +45,6 @@ spec:
   names:
     plural: mks
     singular: mk
-    kind: MongoKube
+    kind: Mk
     shortNames:
     - mk
