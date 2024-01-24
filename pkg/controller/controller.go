@@ -34,6 +34,15 @@ type Controller struct {
 	mkWorkQueue workqueue.RateLimitingInterface
 }
 
+// This struct will represent the data for mongodb and mongo express service
+type MongoService struct {
+	name        string
+	label       map[string]string
+	serviceType v1.ServiceType
+	port        int32
+	nodePort    int32
+}
+
 // Initialize the Controller struct and add event handler for registering
 // handler functions for adding and deleting Mk resources.
 func NewController(
@@ -156,7 +165,20 @@ func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
 		fmt.Printf("Failed to create deployment: %s\n", err.Error())
 	}
 
-	fmt.Printf("deployment: %s\n", deployment.Name)
+	mongodbService := &MongoService{
+		name:        "mongodb-service",
+		label:       deployment.Labels,
+		serviceType: v1.ServiceTypeClusterIP,
+		port:        27017,
+	}
+
+	mongoDbService, err := c.createMongoService(mkResource, *mongodbService)
+
+	if err != nil {
+		fmt.Printf("Failed to create mongo db service: %s\n", err.Error())
+	}
+
+	fmt.Printf("mongodb service : %v\n", mongoDbService)
 
 	return true
 }
@@ -258,4 +280,27 @@ func (c *Controller) getKey(key string, secret *v1.Secret) string {
 
 	fmt.Printf("Key : %s\n", desiredKey)
 	return desiredKey
+}
+
+// Create service for pods of mongodb or mongoexpress
+func (c *Controller) createMongoService(mkResource *beta1.Mk, mongoStruct MongoService) (*v1.Service, error) {
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mongoStruct.name,
+		},
+		Spec: v1.ServiceSpec{
+			Type:     v1.ServiceType(mongoStruct.serviceType),
+			Selector: mongoStruct.label,
+			Ports: []v1.ServicePort{
+				{
+					Port:     mongoStruct.port,
+					NodePort: mongoStruct.nodePort,
+				},
+			},
+		},
+	}
+
+	serviceCreated, err := c.k8sclient.CoreV1().Services(mkResource.Namespace).Create(context.Background(), service, metav1.CreateOptions{})
+
+	return serviceCreated, err
 }

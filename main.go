@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 
 	"mongokube/pkg/controller"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -25,11 +23,6 @@ func main() {
 	k8sclient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		fmt.Printf("Error getting k8sclient, %s", err.Error())
-	}
-
-	listDeployments, err := k8sclient.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
-	for _, d := range listDeployments.Items {
-		fmt.Printf("name:%v\n", d.Name)
 	}
 
 	mkclient, err := mkclientset.NewForConfig(config)
