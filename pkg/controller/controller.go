@@ -178,8 +178,27 @@ func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
 		fmt.Printf("Failed to create mongo db service: %s\n", err.Error())
 	}
 
-	fmt.Printf("mongodb service : %v\n", mongoDbService)
+	mongoExpressDeployment, err := c.createMongoExpressDeployment(mkResource, secret, mongoDbService)
 
+	if err != nil {
+		fmt.Printf("Failed to create mongo db service: %s\n", err.Error())
+	}
+
+	mongoExpressService := &MongoService{
+		name:        "mongoexpress-service",
+		label:       mongoExpressDeployment.Labels,
+		serviceType: v1.ServiceTypeLoadBalancer,
+		port:        8081,
+		nodePort:    31000,
+	}
+
+	mongoExternalService, err := c.createMongoService(mkResource, *mongoExpressService)
+
+	if err != nil {
+		fmt.Printf("Failed to create mongo express service: %s\n", err.Error())
+	}
+
+	fmt.Printf("external service: %v\n", mongoExternalService)
 	return true
 }
 
@@ -212,6 +231,7 @@ func (c *Controller) createMongoDeployment(mkResource *beta1.Mk, secret *v1.Secr
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mkResource.Name + "-deployment",
 			Namespace: mkResource.Namespace,
+			Labels:    map[string]string{"app": mkResource.Name + "db"},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replica,
@@ -254,6 +274,78 @@ func (c *Controller) createMongoDeployment(mkResource *beta1.Mk, secret *v1.Secr
 											Key: c.getKey("password", secret),
 										},
 									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	deploymentResponse, err := c.k8sclient.AppsV1().Deployments(mkResource.Namespace).Create(context.Background(), deployment, metav1.CreateOptions{})
+
+	return deploymentResponse, err
+}
+
+// Create mongo express deployment
+func (c *Controller) createMongoExpressDeployment(mkResource *beta1.Mk, secret *v1.Secret, mongodbService *v1.Service) (*appsv1.Deployment, error) {
+	// container data
+	// label to connect with service
+	replica := int32(2)
+	var containerPort int32 = 8081
+
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mkResource.Name + "-express-deployment",
+			Namespace: mkResource.Namespace,
+			Labels:    map[string]string{"app": mkResource.Name + "express"},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replica,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": mkResource.Name + "express"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": mkResource.Name + "express"},
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  mkResource.Name + "-express-container",
+							Image: mkResource.Spec.MongoExpressImage,
+							Ports: []v1.ContainerPort{
+								{
+									ContainerPort: containerPort,
+								},
+							},
+							Env: []v1.EnvVar{
+								{
+									Name: "ME_CONFIG_MONGODB_ADMINUSERNAME",
+									ValueFrom: &v1.EnvVarSource{
+										SecretKeyRef: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: secret.Name,
+											},
+											Key: c.getKey("username", secret),
+										},
+									},
+								},
+								{
+									Name: "ME_CONFIG_MONGODB_ADMINPASSWORD",
+									ValueFrom: &v1.EnvVarSource{
+										SecretKeyRef: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: secret.Name,
+											},
+											Key: c.getKey("password", secret),
+										},
+									},
+								},
+								{
+									Name:  "ME_CONFIG_MONGODB_SERVER",
+									Value: mongodbService.Name,
 								},
 							},
 						},

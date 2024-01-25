@@ -4,7 +4,7 @@ metadata:
   name: mongokube-test
   namespace: mongokube-ns
 spec:
- mongoExpressImage: ""
+ mongoExpressImage: "mongo-express:latest"
  mongoDbImage: "mongo:4.4.6"
  dbUsername: "admin"
  dbPassword: "admin"
