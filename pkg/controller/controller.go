@@ -159,7 +159,7 @@ func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
 		fmt.Printf("Failed to create secret: %s\n", err.Error())
 	}
 
-	fmt.Printf("Creating a deployment for mk resource: %s\n", mkResource.Name)
+	fmt.Printf("Creating MongoDB deployment for mk resource: %s\n", mkResource.Name)
 	deployment, err := c.createMongoDeployment(mkResource, secret)
 	if err != nil {
 		fmt.Printf("Failed to create deployment: %s\n", err.Error())
@@ -172,12 +172,14 @@ func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
 		port:        27017,
 	}
 
+	fmt.Printf("Creating MongoDB internal service for mk resource: %s\n", mkResource.Name)
 	mongoDbService, err := c.createMongoService(mkResource, *mongodbService)
 
 	if err != nil {
 		fmt.Printf("Failed to create mongo db service: %s\n", err.Error())
 	}
 
+	fmt.Printf("Creating MongoExpress deployment for mk resource: %s\n", mkResource.Name)
 	mongoExpressDeployment, err := c.createMongoExpressDeployment(mkResource, secret, mongoDbService)
 
 	if err != nil {
@@ -192,13 +194,13 @@ func (c *Controller) handleMkResource(mkResource *beta1.Mk) bool {
 		nodePort:    31000,
 	}
 
-	mongoExternalService, err := c.createMongoService(mkResource, *mongoExpressService)
+	fmt.Printf("Creating MongoExpress external service for mk resource: %s\n", mkResource.Name)
+	_, err = c.createMongoService(mkResource, *mongoExpressService)
 
 	if err != nil {
 		fmt.Printf("Failed to create mongo express service: %s\n", err.Error())
 	}
 
-	fmt.Printf("external service: %v\n", mongoExternalService)
 	return true
 }
 
@@ -370,7 +372,6 @@ func (c *Controller) getKey(key string, secret *v1.Secret) string {
 		}
 	}
 
-	fmt.Printf("Key : %s\n", desiredKey)
 	return desiredKey
 }
 
