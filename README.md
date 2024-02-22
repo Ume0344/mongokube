@@ -39,6 +39,11 @@ kubect  create -f ./manifests/mongo.yaml
 
 To see how to create yaml file (like mongo.yaml), please refer to [design](./docs/design.md) and [manifests](./manifests/mongo.yaml)
 
+## Related Medium Blogs
+- [MongoKube — Simplifying MongoDB Deployment on Kubernetes Cluster](https://uhabiba.medium.com/mongokube-simplifying-mongodb-deployment-on-kubernetes-cluster-c5b4de9ab3e4)
+- [Kubernetes Maestro: Power of Custom Resources for Next-Level Orchestration](https://uhabiba.medium.com/kubernetes-maestro-power-of-custom-resources-for-next-level-orchestration-908cec883e3f)
+
+
 ### References
 - https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
 - https://github.com/kubernetes/sample-controller

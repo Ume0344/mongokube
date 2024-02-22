@@ -18,8 +18,6 @@ spec:
               properties:
                 mongoExpressImage:
                   type: string
-                mongoExpressServicePort:
-                  type: integer
                 mongoDbImage:
                   type: string
                 dbUsername:
