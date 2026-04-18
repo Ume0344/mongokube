@@ -1,4 +1,6 @@
 # mongokube
+***Note:*** *Current code uses code-generators to implement MongoKube custom resource. Refactoring of MongoKube is in pipeline to implement its custom resource using [controller-runtime](https://pkg.go.dev/sigs.k8s.io/controller-runtime)*
+
 MongoKube is a framework that is developed to use custom resources for automating the deployment of MongoDB on Kubernetes cluster.
 
 ### MongoDB and MongoExpress
