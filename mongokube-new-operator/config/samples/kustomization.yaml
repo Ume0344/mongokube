@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- mongokube.wrd_alpha1_mongokube.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
